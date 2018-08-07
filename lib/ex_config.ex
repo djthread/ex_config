@@ -19,10 +19,10 @@ defmodule ExConfig do
 
   * `:app` - The app atom. If undefined, this is assumed to be the first part
     of the using module's namespace, transformed with `&Macro.underscore/1`.
-  * `:env_prefix` - A string which should be combined with an underscore to
-    form the prefix of environment variables that are looked up. This is
-    assumed to be first part of the using module's namespace, transformed
-    with `&String.upcase/1`.
+  * `:env_prefix` - A string which should be combined with "_ENV" to form the
+    prefix of environment variables that are looked up. This is assumed to be
+    first part of the using module's namespace, transformed with
+    `&String.upcase/1`.
   * `:valid_environments` - A list of atoms which are the environment settings
     that can be set (in string form, of course) in the application environment
     variable (eg. `SKYLAB_ENV`)
