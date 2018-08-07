@@ -30,12 +30,8 @@ defmodule MyApp.Config.EnvPrefixOverride do
 end
 
 defmodule MyApp.Config.Section do
-  use ExConfig, sections: [:blah], data_sources: [BoringDataSource1]
-end
-
-defmodule MyApp.Config.SectionMacro do
-  use ExConfig, data_sources: [BoringDataSource1]
-  section(:blah)
+  use ExConfig, sections: [:one], data_sources: [BoringDataSource1]
+  section(:two)
 end
 
 defmodule ExConfigTest do
@@ -44,6 +40,7 @@ defmodule ExConfigTest do
 
   alias MyApp.Config.{
     AppOverride,
+    Combo,
     CustomEnvironments,
     EnvPrefixOverride,
     Section,
@@ -55,6 +52,8 @@ defmodule ExConfigTest do
   test "Config works" do
     assert {:ok, "letter a"} == Config.fetch(:some_section, :a)
     assert "letter a" == Config.fetch!(:some_section, :a)
+    assert "letter a" == Config.get(:some_section, :a)
+
     assert :error == Config.fetch(:some_section, :undefined_key)
     assert nil == Config.get(:some_section, :undefined_key)
 
@@ -95,12 +94,9 @@ defmodule ExConfigTest do
     System.delete_env("HAHA_ENV")
   end
 
-  test "Section shortcuts" do
-    assert "letter a" == Section.blah(:a)
-  end
-
-  test "Section shortcut macro" do
-    assert "letter a" == SectionMacro.blah(:a)
+  test "Section shortcuts and both methods at once" do
+    assert "letter a" == Section.one(:a)
+    assert "letter a" == Section.two(:a)
   end
 
   test "Data source cascade logic" do
@@ -109,7 +105,8 @@ defmodule ExConfigTest do
   end
 
   test "Exception is raised for missing value" do
-    assert_raise RuntimeError, fn -> Section.blah!(:unset_key) end
+    assert_raise RuntimeError, fn -> Section.fetch!(:one, :unset_key) end
+    assert_raise RuntimeError, fn -> Section.one!(:unset_key) end
     assert_raise RuntimeError, fn -> Section.fetch!(:whatever, :unset_key) end
   end
 end
