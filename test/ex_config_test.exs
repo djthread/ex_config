@@ -54,6 +54,7 @@ defmodule ExConfigTest do
 
   test "Config works" do
     assert {:ok, "letter a"} == Config.fetch(:some_section, :a)
+    assert "letter a" == Config.fetch!(:some_section, :a)
     assert :error == Config.fetch(:some_section, :undefined_key)
     assert nil == Config.get(:some_section, :undefined_key)
 
@@ -74,6 +75,11 @@ defmodule ExConfigTest do
     System.put_env("MYAPP_ENV", "pluto")
     assert :pluto == CustomEnvironments.env()
     System.delete_env("MYAPP_ENV")
+  end
+
+  test "Raises on bad environment" do
+    System.put_env("MYAPP_ENV", "waaattt")
+    assert_raise RuntimeError, fn -> Config.env() end
   end
 
   test "App can be overridden" do
