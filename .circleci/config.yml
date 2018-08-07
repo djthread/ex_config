@@ -1,0 +1,108 @@
+version: 2
+
+machine:
+  services:
+    - docker
+
+attach_workspace: &attach_workspace
+  attach_workspace:
+    at: '.'
+
+persist_workspace: &persist_workspace
+  persist_to_workspace:
+    root: '.'
+    paths: [ '.' ]
+
+persist_hal_build_id_to_workspace: &persist_hal_build_id_to_workspace
+  persist_to_workspace:
+    # We do not need to persist the whole workspace for the hal build, we only need the build_id
+    root: '.'
+    paths: [ '.hal_build_id' ]
+
+enterprise_setup: &enterprise_setup
+  run:
+    name: Prepare Enterprise Setup
+    command: 'curl -sL https://tools.circleci.foc.zone/install-certs | bash -'
+    # command: 'curl -sLk "https://git.rockfin.com/pages/circleci/prepare-environment/prepare.sh" | bash -'
+
+restore_elixir_caches: &restore_elixir_caches
+  restore_cache:
+    keys:
+      - v3-mix-{{ .Branch }}-{{ checksum "mix.lock" }}
+      - v3-mix-{{ .Branch }}
+      - v3-mix
+
+  restore_cache:
+    keys:
+      - v3-build-{{ .Branch }}
+      - v3-build
+
+save_elixir_caches: &save_elixir_caches
+  save_cache:
+    key: v3-mix-{{ .Branch }}-{{ checksum "mix.lock" }}
+    paths: "deps"
+  save_cache:
+    key: v3-mix-{{ .Branch }}
+    paths: "deps"
+  save_cache:
+    key: v3-mix
+    paths: "deps"
+
+  save_cache:
+    key: v3-build-{{ .Branch }}
+    paths: "_build"
+  save_cache:
+    key: v3-build
+    paths: "_build"
+
+
+jobs:
+  # install_dependencies:
+  #   docker: [ {image: 'circleci/elixir:1.7.1'} ]
+  #   environment:
+  #     - MIX_ENV=test
+  #   steps:
+  #     - *enterprise_setup
+
+  #     - checkout
+
+  #     - *restore_elixir_caches
+  #     - run: mix local.hex --force
+  #     - run: mix local.rebar --force
+  #     - run: mix do deps.get, compile
+  #     - *save_elixir_caches
+
+  #     - *persist_workspace
+
+  publish_things:
+    docker: [ {image: 'circleci/elixir:1.7.1'} ]
+    environment: [ {MIX_ENV: "dev"} ]
+    steps:
+      - *enterprise_setup
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "f1:1c:14:9f:a9:1c:34:6d:f0:a4:59:80:16:76:17:f4"
+      - run: |
+          rm /home/circleci/.ssh/known_hosts
+          mix local.hex --force
+          mix local.rebar --force
+          mix do deps.get, compile
+          mix docs
+          mkdir -p ~/.ssh
+          ssh-keyscan -H git.rockfin.com >> ~/.ssh/known_hosts
+          git config --global user.email "ITTeamVenture@QuickenLoans.com"
+          git config --global user.name "Venture Auto Docs Generator"
+          git clone -q -b gh-pages git@git.rockfin.com:marketing-web/ex_config.git /tmp/ex_config
+          cp -a doc/* /tmp/ex_config/
+          cd /tmp/ex_config
+          git add .
+          git commit -m 'updated docs'
+          git push origin gh-pages
+
+workflows:
+  version: 2
+  pipeline:
+    jobs:
+      - publish_things:
+          filters: { branches: { only: stable } }

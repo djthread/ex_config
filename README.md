@@ -2,7 +2,8 @@
 
 ExConfig makes configuration management in Elixir easier.
 
-See the `ExConfig` module documentation for an explanation of the library.
+See the [`ExConfig` module documentation](https://git.rockfin.com/pages/marketing-web/ex_config/ExConfig.html) for an explanation of the library.
+
 
 ## Installation
 
@@ -12,7 +13,7 @@ Add `ex_config` to your list of dependencies in `mix.exs`:
 def deps do
   [
     {:ex_config,
-     git: "https://github.com/djthread/ex_config.git",
+     git: "https://git.rockfin.com/marketing-web/ex_config.git",
      branch: "stable"}
   ]
 end
