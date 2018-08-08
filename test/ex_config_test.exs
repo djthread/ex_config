@@ -40,11 +40,9 @@ defmodule ExConfigTest do
 
   alias MyApp.Config.{
     AppOverride,
-    Combo,
     CustomEnvironments,
     EnvPrefixOverride,
-    Section,
-    SectionMacro
+    Section
   }
 
   doctest ExConfig

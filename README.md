@@ -18,13 +18,17 @@ def deps do
 end
 ```
 
-## Usage
+## Usage Examples
 
 ```elixir
 use Mix.Config
 
 config :my_app, :foo_service, base_url: "https://foo/"
-config :my_app, :baz_service, timeout: 10_000
+config :my_app, :baz,
+    color: "blue",
+    env_configs: [
+        prod: [color: "orange"]
+    ]
 ```
 
 ```elixir
@@ -37,8 +41,17 @@ end
 
 alias MyApp.Config
 
-Config.foo_service!(:base_url) #=> "https://foo/"
+Config.env()                         #=> :dev
+Config.foo_service!(:base_url)       #=> "https://foo/"
+Config.get(:foo_service, :base_url)  #=> "https://foo/"
+Config.get(:foo_service, :blah)      #=> nil
 Config.foo_service(:something_unset) #=> nil
-Config.another(:unset_thing) #=> nil
-Config.fetch(:baz_service, :timeout) #=> 10000
+Config.another(:unset_thing)         #=> nil
+
+Config.fetch(:baz, :color)           #=> {:ok, "blue"}
+System.put_env("MYAPP_ENV", "prod")
+Config.env()                         #=> :prod
+Config.fetch(:baz, :color)           #=> {:ok, "orange"}
+System.put_env("BAZ_COLOR", "pink")
+Config.fetch(:baz, :color)           #=> {:ok, "pink"}
 ```
