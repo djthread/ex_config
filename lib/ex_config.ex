@@ -76,17 +76,15 @@ defmodule ExConfig do
     `:base_url`
   """
 
-  alias ExConfig.Validator
+  alias ExConfig.OptionNormalizer
 
-  # The data sources to poll, in order
-  @data_sources [
-    ExConfig.EnvironmentDataSource,
-    ExConfig.EnvConfigDataSource,
-    ExConfig.ApplicationEnvironmentDataSource
-  ]
-
-  defmacro __using__(opts) do
-    opts = Validator.validate_opts!(__CALLER__.module, opts)
+  defmacro __using__(opts \\ []) do
+    opts =
+      __CALLER__
+      |> Module.eval_quoted(opts)
+      |> elem(0)
+      |> Keyword.put(:module, __CALLER__.module)
+      |> OptionNormalizer.normalize_opts!()
 
     quote do
       import ExConfig, only: [section: 1]
@@ -94,12 +92,17 @@ defmodule ExConfig do
       @doc "Get the configured data sources"
       @spec data_sources :: [module]
       def data_sources do
-        unquote(Keyword.get(opts, :data_sources, @data_sources))
+        unquote(Keyword.get(opts, :data_sources))
       end
 
       @doc "Get the application environment"
       @spec env :: String.t()
-      def env, do: ExConfig.get_env(unquote(opts))
+      def env do
+        ExConfig.get_env(
+          unquote(Keyword.get(opts, :env_prefix)),
+          unquote(Keyword.get(opts, :valid_environments))
+        )
+      end
 
       @doc "Get the atom for the app's config namespace"
       @spec app :: atom
@@ -142,11 +145,8 @@ defmodule ExConfig do
   end
 
   @doc "Get the application (runtime) environment"
-  @spec get_env(list) :: atom
-  def get_env(opts) do
-    valid = Keyword.get(opts, :valid_environments)
-    prefix = Keyword.get(opts, :env_prefix)
-
+  @spec get_env(String.t(), [atom]) :: atom
+  def get_env(prefix, valid) do
     case System.get_env("#{prefix}_ENV") do
       nil ->
         hd(valid)
@@ -156,8 +156,8 @@ defmodule ExConfig do
           do: String.to_atom(val),
           else:
             raise("""
-            Invalid #{prefix}_ENV (#{val}). Add `:#{val}` to the
-            `:valid_environments` option.
+            Invalid #{prefix}_ENV (#{val}). Add `:#{val}` to the \
+            `:valid_environments` option.\
             """)
     end
   end

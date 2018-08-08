@@ -1,4 +1,4 @@
-defmodule ExConfig.Validator do
+defmodule ExConfig.OptionNormalizer do
   @moduledoc """
   Helper tools for validating and creating fallback values for options
   """
@@ -6,19 +6,30 @@ defmodule ExConfig.Validator do
   @env_prefix_regex ~r/^[A-Z][A-Z0-9_]*$/
   @default_valid_environments ~w(dev test beta prod)a
 
+  # The default data sources to poll, in order
+  @data_sources [
+    ExConfig.EnvironmentDataSource,
+    ExConfig.EnvConfigDataSource,
+    ExConfig.ApplicationEnvironmentDataSource
+  ]
+
+  @type opts :: Keyword.t()
+
   @doc """
   Given opts, raise on bad values, fill defaults for missing values, and
   return the normalized opts.
   """
-  def validate_opts!(mod, opts) do
+  @spec normalize_opts!(opts) :: opts
+  def normalize_opts!(opts) do
     opts
-    |> Keyword.put(:app, validate_app!(mod, opts))
-    |> Keyword.put(:env_prefix, validate_env_prefix!(mod, opts))
-    |> Keyword.put(:valid_environments, validate_valid_environments!(mod, opts))
-    |> Keyword.put(:sections, validate_sections!(mod, opts))
+    |> Keyword.put(:app, normalize_app!(opts))
+    |> Keyword.put(:env_prefix, normalize_env_prefix!(opts))
+    |> Keyword.put(:valid_environments, normalize_valid_environments!(opts))
+    |> Keyword.put(:sections, normalize_sections!(opts))
+    |> Keyword.put(:data_sources, normalize_data_sources!(opts))
   end
 
-  def validate_app!(mod, opts) do
+  def normalize_app!(opts) do
     case Keyword.fetch(opts, :app) do
       {:ok, app} when is_atom(app) ->
         app
@@ -27,7 +38,8 @@ defmodule ExConfig.Validator do
         raise ArgumentError, "Invalid `:app`: #{not_atom}"
 
       :error ->
-        mod
+        opts
+        |> Keyword.get(:module)
         |> Module.split()
         |> Enum.take(1)
         |> hd()
@@ -36,7 +48,7 @@ defmodule ExConfig.Validator do
     end
   end
 
-  def validate_env_prefix!(mod, opts) do
+  def normalize_env_prefix!(opts) do
     with {:ok, val} when byte_size(val) > 0 <- Keyword.fetch(opts, :env_prefix),
          {_, true} <- {val, Regex.match?(@env_prefix_regex, val)} do
       val
@@ -48,11 +60,16 @@ defmodule ExConfig.Validator do
         raise ArgumentError, "Invalid `:env_prefix`: #{inspect(val)}"
 
       :error ->
-        mod |> Module.split() |> Enum.take(1) |> hd() |> String.upcase()
+        opts
+        |> Keyword.get(:module)
+        |> Module.split()
+        |> Enum.take(1)
+        |> hd()
+        |> String.upcase()
     end
   end
 
-  def validate_valid_environments!(_, opts) do
+  def normalize_valid_environments!(opts) do
     case Keyword.fetch(opts, :valid_environments) do
       {:ok, envs} when envs != [] ->
         validate_all_atoms!(envs, "env")
@@ -63,7 +80,7 @@ defmodule ExConfig.Validator do
     end
   end
 
-  def validate_sections!(_, opts) do
+  def normalize_sections!(opts) do
     case Keyword.fetch(opts, :sections) do
       {:ok, sections} ->
         validate_all_atoms!(sections, "section")
@@ -72,6 +89,23 @@ defmodule ExConfig.Validator do
       :error ->
         []
     end
+  end
+
+  def normalize_data_sources!(opts) do
+    data_sources = Keyword.get(opts, :data_sources, @data_sources)
+
+    Enum.each(data_sources, fn ds ->
+      behaviours = Keyword.get(ds.module_info(:attributes), :behaviour, [])
+
+      if ExConfig.DataSource not in behaviours do
+        raise ArgumentError, """
+        Data source does not implement `ExConfig.DataSource` behaviour: \
+        #{ds}\
+        """
+      end
+    end)
+
+    data_sources
   end
 
   defp validate_all_atoms!(atoms, name) when is_list(atoms) do
