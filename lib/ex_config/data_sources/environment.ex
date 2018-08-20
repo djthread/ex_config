@@ -5,6 +5,9 @@ defmodule ExConfig.EnvironmentDataSource do
   Note that the `app` is not used. If the app is `:skylab`, the section is
   `:some_service`, and the key is `:base_url`, then the environment variable
   we'll look to would be `SOME_SERVICE_BASE_URL`.
+
+  Note also that the environment variable can be set to "true" or "false" to
+  be resolved to the appropriate boolean value.
   """
 
   @behaviour ExConfig.DataSource
@@ -18,6 +21,8 @@ defmodule ExConfig.EnvironmentDataSource do
     |> System.get_env()
     |> case do
       nil -> :error
+      "true" -> {:ok, true}
+      "false" -> {:ok, false}
       val -> {:ok, val}
     end
   end

@@ -10,4 +10,12 @@ defmodule ExConfig.EnvironmentDataSourceTest do
 
     assert :error == DS.fetch(:_, :_, :my_service, :bla)
   end
+
+  test "booleans work" do
+    System.put_env("SOME_THING_ENABLED", "true")
+    assert {:ok, true} == DS.fetch(:_, :_, :some_thing, :enabled)
+
+    System.put_env("SOME_THING_ENABLED", "false")
+    assert {:ok, false} == DS.fetch(:_, :_, :some_thing, :enabled)
+  end
 end
